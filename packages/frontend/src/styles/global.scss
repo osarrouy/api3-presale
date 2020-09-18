@@ -1,0 +1,58 @@
+@import './variables.scss';
+@import './reset.scss';
+
+html,
+body {
+  background-color: $background;
+  color: $foreground;
+  font-family: $font-stack;
+  font-size: $font-size;
+  font-weight: $thin;
+  line-height: $line-height;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-weight: $bold;
+  line-height: 1em;
+  margin: $GU 0;
+}
+
+p {
+  margin: $GU 0;
+
+  &:first-of-type {
+    margin-top: 0;
+  }
+
+  &:last-of-type {
+    margin-bottom: 0;
+  }
+}
+
+a {
+  color: $primary;
+  text-decoration: none;
+  padding: $GU / 2;
+
+  &:hover {
+    font-weight: bold;
+    background-color: $primary;
+    color: $background;
+  }
+}
+
+input::-webkit-outer-spin-button,
+input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* Firefox */
+input[type='number'] {
+  -moz-appearance: textfield;
+}
