@@ -1,0 +1,22 @@
+# lerna
+lerna-debug.log
+
+# dependencies
+node_modules
+package-lock.json
+
+# sapper
+__sapper__
+
+# artifacts
+artifacts
+
+# coverage
+*/**/coverage
+*/**/coverageEnv
+*/**/coverage.json
+*/**/allFiredEvents
+*/**/scTopics
+
+# macOS shit
+.DS_Store
