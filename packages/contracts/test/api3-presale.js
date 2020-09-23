@@ -1,5 +1,5 @@
 const { expect } = require('chai');
-const { BN, balance, constants, expectEvent, expectRevert } = require('@openzeppelin/test-helpers');
+const { BN, balance, constants, ether, expectEvent, expectRevert, send } = require('@openzeppelin/test-helpers');
 const API3Presale = artifacts.require('API3Presale');
 const helpers = require('./helpers');
 
@@ -18,6 +18,8 @@ contract('API3Presale', ([admin, bank, user1, user2, blacklisted]) => {
         expect(await this.setup.presale.admin()).to.equal(admin);
         expect(await this.setup.presale.bank()).to.equal(bank);
         expect(await this.setup.presale.token()).to.equal(this.setup.token.address);
+        expect(await this.setup.presale.ETH_PRICE()).to.be.bignumber.equal(helpers.ETH_PRICE);
+        // other prices are tested in the updateETHPrice function
       });
     });
 
@@ -37,6 +39,12 @@ contract('API3Presale', ([admin, bank, user1, user2, blacklisted]) => {
       context('» token parameter is not valid', () => {
         it('it reverts', async () => {
           await expectRevert(API3Presale.new(admin, bank, constants.ZERO_ADDRESS, helpers.ETH_PRICE), 'API3 > Invalid address');
+        });
+      });
+
+      context('» price parameter is not valid', () => {
+        it('it reverts', async () => {
+          await expectRevert(API3Presale.new(admin, bank, this.setup.token.address, 0), 'API3 > Invalid price');
         });
       });
     });
@@ -290,7 +298,69 @@ contract('API3Presale', ([admin, bank, user1, user2, blacklisted]) => {
     });
   });
 
-  context.only('# open', () => {
+  context('# updateETHPrice', () => {
+    context('» transaction is triggered by admin', () => {
+      context('» presale is not opened yet', () => {
+        context('» price is valid', () => {
+          before('!! deploy setup', async () => {
+            await setup();
+          });
+
+          before('!! update ETH price', async () => {
+            this.data.tx = await this.setup.presale.updateETHPrice(400);
+          });
+
+          it('it updates pricing', async () => {
+            // ETH_PRICE:       400 [$ per ETH]
+            // TOKEN_PRICE:     0.4 [$ per token] = ETH_PRICE / 0.4 [token wei / wei] = 10^18 * ETH_PRICE / 0.4 [ETH_PRICE_BASE]
+            // GLOBAL_CAP:      2,000,000 [$] = 10^18 * 2,000,000 / ETH_PRICE  [wei]
+            // INDIVIDUAL_CAP:  100,000 [$]   = 10^18 * 100,000   / ETH_PRICE [wei]
+
+            expect(await this.setup.presale.ETH_PRICE()).to.be.bignumber.equal(new BN('400'));
+            expect(await this.setup.presale.TOKEN_PRICE()).to.be.bignumber.equal(ether(new BN('1000')));
+            expect(await this.setup.presale.GLOBAL_CAP()).to.be.bignumber.equal(ether(new BN('5000')));
+            expect(await this.setup.presale.INDIVIDUAL_CAP()).to.be.bignumber.equal(ether(new BN('250')));
+          });
+        });
+
+        context('» price is not valid', () => {
+          before('!! deploy setup', async () => {
+            await setup();
+          });
+
+          it('it reverts', async () => {
+            await expectRevert(this.setup.presale.updateETHPrice(0), 'API3 > Invalid price');
+          });
+        });
+      });
+
+      context('» presale is opened', () => {
+        before('!! deploy setup', async () => {
+          await setup();
+        });
+
+        before('!! open presale', async () => {
+          await this.setup.presale.open();
+        });
+
+        it('it reverts', async () => {
+          await expectRevert(this.setup.presale.updateETHPrice(400), 'API3 > Presale opened');
+        });
+      });
+    });
+
+    context('» transaction is not triggered by admin', () => {
+      before('!! deploy setup', async () => {
+        await setup();
+      });
+
+      it('it reverts', async () => {
+        await expectRevert(this.setup.presale.updateETHPrice(400, { from: user1 }), 'API3 > Protected operation');
+      });
+    });
+  });
+
+  context('# open', () => {
     context('» transaction is triggered by admin', () => {
       context('» presale is not opened yet', () => {
         before('!! deploy setup', async () => {
@@ -336,7 +406,7 @@ contract('API3Presale', ([admin, bank, user1, user2, blacklisted]) => {
     });
   });
 
-  context.only('# close', () => {
+  context('# close', () => {
     context('» transaction is triggered by admin', () => {
       context('» presale is opened', () => {
         context('» presale is not closed yet', () => {
@@ -428,32 +498,262 @@ contract('API3Presale', ([admin, bank, user1, user2, blacklisted]) => {
     });
   });
 
-  context('# receive', () => {
-    before('!! deploy setup', async () => {
-      await setup();
-      await this.setup.presale.open();
-      this.data.balances[0] = await balance.current(user1);
-      this.data.balances[1] = await balance.current(this.setup.presale.address);
-      this.data.balances[2] = await this.setup.token.balanceOf(user1);
-      this.data.balances[3] = await this.setup.token.balanceOf(this.setup.presale.address);
-      this.data.tx = await web3.eth.sendTransaction({ from: user1, to: this.setup.presale.address, value: helpers.VALUE_LOW });
-    });
+  context('# withdraw', () => {
+    context('» transaction is triggered by admin', () => {
+      context('» presale is closed', () => {
+        before('!! deploy setup', async () => {
+          await setup();
+        });
 
-    context('» its fine', () => {
-      it('it emits an Invest event', async () => {
-        await expectEvent.inTransaction(this.data.tx.transactionHash, this.setup.presale, 'Invest', {
-          investor: user1,
-          value: helpers.VALUE_LOW,
-          investment: helpers.VALUE_LOW,
-          amount: helpers.RETURN_LOW,
+        before('!! whitelist investor', async () => {
+          await this.setup.presale.whitelist([user1]);
+        });
+
+        before('!! open presale', async () => {
+          await this.setup.presale.open();
+        });
+
+        before('!! buy tokens', async () => {
+          await web3.eth.sendTransaction({ from: user1, to: this.setup.presale.address, value: helpers.VALUE_LOW });
+        });
+
+        before('!! close presale', async () => {
+          await this.setup.presale.close();
+        });
+
+        before('!! transfer tokens', async () => {
+          const balance = await this.setup.token.balanceOf(user1);
+          await this.setup.token.transfer(this.setup.presale.address, balance, { from: user1 });
+          expect(await this.setup.token.balanceOf(user1)).to.be.bignumber.equal(new BN('0'));
+          expect(await this.setup.token.balanceOf(this.setup.presale.address)).to.be.bignumber.equal(balance);
+        });
+
+        before('!! setup balances', async () => {
+          this.data.balances[0] = await this.setup.token.balanceOf(bank);
+          this.data.balances[1] = await this.setup.token.balanceOf(this.setup.presale.address);
+        });
+
+        before('!! withdraw', async () => {
+          await this.setup.presale.withdraw();
+        });
+
+        it('it withdraws API3 tokens', async () => {
+          expect(await this.setup.token.balanceOf(bank)).to.be.bignumber.equal(this.data.balances[0].add(this.data.balances[1]));
+          expect(await this.setup.token.balanceOf(this.setup.presale.address)).to.be.bignumber.equal(new BN('0'));
         });
       });
 
-      it('it collects ETH and transfers tokens', async () => {
-        expect(await balance.current(user1)).to.be.bignumber.equal(this.data.balances[0].sub(helpers.VALUE_LOW).sub(await helpers.gasCost(this.data.tx)));
-        expect(await balance.current(this.setup.presale.address)).to.be.bignumber.equal(this.data.balances[1].add(helpers.VALUE_LOW));
-        expect(await this.setup.token.balanceOf(user1)).to.be.bignumber.equal(this.data.balances[2].add(helpers.RETURN_LOW));
-        expect(await this.setup.token.balanceOf(this.setup.presale.address)).to.be.bignumber.equal(this.data.balances[3].sub(helpers.RETURN_LOW));
+      context('» presale is not closed yet', () => {
+        before('!! deploy setup', async () => {
+          await setup();
+        });
+
+        before('!! open presale', async () => {
+          await this.setup.presale.open();
+        });
+
+        it('it reverts', async () => {
+          await expectRevert(this.setup.presale.withdraw(), 'API3 > Presale not over yet');
+        });
+      });
+    });
+
+    context('» transaction is not triggered by admin', () => {
+      before('!! deploy setup', async () => {
+        await setup();
+      });
+
+      before('!! open presale', async () => {
+        await this.setup.presale.open();
+      });
+
+      before('!! close presale', async () => {
+        await this.setup.presale.close();
+      });
+
+      it('it reverts', async () => {
+        await expectRevert(this.setup.presale.withdraw({ from: user1 }), 'API3 > Protected operation');
+      });
+    });
+  });
+
+  context('# withdrawETH', () => {
+    context('» transaction is triggered by admin', () => {
+      context('» presale is closed', () => {
+        before('!! deploy setup', async () => {
+          await setup();
+        });
+
+        before('!! whitelist investor', async () => {
+          await this.setup.presale.whitelist([user1]);
+        });
+
+        before('!! open presale', async () => {
+          await this.setup.presale.open();
+        });
+
+        before('!! close presale', async () => {
+          await this.setup.presale.close();
+        });
+
+        before('!! setup balances', async () => {
+          // cannot send ETH because the receive function reverts if presale is over
+          // await web3.eth.sendTransaction({ from: user1, to: this.setup.presale.address, value: helpers.VALUE_LOW });
+          this.data.balances[0] = await balance.current(bank);
+          this.data.balances[1] = await balance.current(this.setup.presale.address);
+        });
+
+        before('!! whitdraw ETH', async () => {
+          await this.setup.presale.withdrawETH();
+        });
+
+        it('it withdraws ETH', async () => {
+          // dummy test
+          expect(await balance.current(this.setup.presale.address)).to.be.bignumber.equal(new BN('0'));
+        });
+      });
+
+      context('» presale is not closed yet', () => {
+        before('!! deploy setup', async () => {
+          await setup();
+        });
+
+        before('!! open presale', async () => {
+          await this.setup.presale.open();
+        });
+
+        it('it reverts', async () => {
+          await expectRevert(this.setup.presale.withdrawETH(), 'API3 > Presale not over yet');
+        });
+      });
+    });
+
+    context('» transaction is not triggered by admin', () => {
+      before('!! deploy setup', async () => {
+        await setup();
+      });
+
+      before('!! open presale', async () => {
+        await this.setup.presale.open();
+      });
+
+      before('!! close presale', async () => {
+        await this.setup.presale.close();
+      });
+
+      it('it reverts', async () => {
+        await expectRevert(this.setup.presale.withdrawETH({ from: user1 }), 'API3 > Protected operation');
+      });
+    });
+  });
+
+  context.only('# receive', () => {
+    context('» presale is open', () => {
+      context('» presale is not over', () => {
+        context('» global cap is not reached', () => {
+          context('» individual cap is not reached', () => {
+            before('!! deploy setup', async () => {
+              await setup();
+            });
+
+            before('!! whitelist investor', async () => {
+              await this.setup.presale.whitelist([user1]);
+            });
+
+            before('!! open presale', async () => {
+              await this.setup.presale.open();
+            });
+
+            before('!! setup balances', async () => {
+              this.data.balances[0] = await balance.current(user1);
+              this.data.balances[1] = await balance.current(this.setup.presale.address);
+              this.data.balances[2] = await this.setup.token.balanceOf(user1);
+              this.data.balances[3] = await this.setup.token.balanceOf(this.setup.presale.address);
+            });
+
+            before('!! buy tokens', async () => {
+              this.data.tx = await web3.eth.sendTransaction({ from: user1, to: this.setup.presale.address, value: helpers.VALUE_LOW });
+            });
+
+            it('it emits an Invest event', async () => {
+              await expectEvent.inTransaction(this.data.tx.transactionHash, this.setup.presale, 'Invest', {
+                investor: user1,
+                value: helpers.VALUE_LOW,
+                investment: helpers.VALUE_LOW,
+                amount: helpers.RETURN_LOW,
+              });
+            });
+
+            it('it collects ETH and transfers tokens', async () => {
+              expect(await balance.current(user1)).to.be.bignumber.equal(this.data.balances[0].sub(helpers.VALUE_LOW).sub(await helpers.gasCost(this.data.tx)));
+              expect(await balance.current(this.setup.presale.address)).to.be.bignumber.equal(this.data.balances[1].add(helpers.VALUE_LOW));
+              expect(await this.setup.token.balanceOf(user1)).to.be.bignumber.equal(this.data.balances[2].add(helpers.RETURN_LOW));
+              expect(await this.setup.token.balanceOf(this.setup.presale.address)).to.be.bignumber.equal(this.data.balances[3].sub(helpers.RETURN_LOW));
+            });
+          });
+
+          context('» individual cap is reached', () => {
+            before('!! deploy setup', async () => {
+              await setup();
+            });
+
+            before('!! whitelist investor', async () => {
+              await this.setup.presale.whitelist([user1]);
+            });
+
+            before('!! open presale', async () => {
+              await this.setup.presale.open();
+            });
+
+            before('!! reach individual cap', async () => {
+              await send.ether(user1, this.setup.presale.address, new BN('100000').div(helpers.ETH_PRICE));
+            });
+
+            it('it reverts', async () => {
+              await expectRevert(send.ether(user1, this.setup.presale.address, helpers.VALUE_LOW), 'API3 > Individual cap reached');
+            });
+          });
+        });
+
+        context('» global cap is reached', () => {
+          // cannot test because it would require 20 different addresses to reach the global cap
+        });
+      });
+
+      context('» presale is over', () => {
+        before('!! deploy setup', async () => {
+          await setup();
+        });
+
+        before('!! whitelist investor', async () => {
+          await this.setup.presale.whitelist([user1]);
+        });
+
+        before('!! open presale', async () => {
+          await this.setup.presale.open();
+        });
+
+        before('!! close presale', async () => {
+          await this.setup.presale.close();
+        });
+
+        it('it reverts', async () => {
+          await expectRevert(send.ether(user1, this.setup.presale.address, helpers.VALUE_LOW), 'API3 > Presale over');
+        });
+      });
+    });
+
+    context('» presale is not open', () => {
+      before('!! deploy setup', async () => {
+        await setup();
+      });
+
+      before('!! whitelist investor', async () => {
+        await this.setup.presale.whitelist([user1]);
+      });
+
+      it('it reverts', async () => {
+        await expectRevert(send.ether(user1, this.setup.presale.address, helpers.VALUE_LOW), 'API3 > Presale not opened yet');
       });
     });
   });
