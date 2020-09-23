@@ -4,7 +4,7 @@ const { BN } = require('@openzeppelin/test-helpers');
 
 const ETH_PRICE = new BN('350');
 
-const setup = async (ctx, [admin, bank, whitelisted]) => {
+const setup = async (ctx, [admin, bank]) => {
   ctx.setup = {};
   ctx.data = {};
   ctx.data.balances = [];
@@ -13,7 +13,7 @@ const setup = async (ctx, [admin, bank, whitelisted]) => {
   ctx.setup.presale = await API3Presale.new(admin, bank, ctx.setup.token.address, ETH_PRICE);
 
   await ctx.setup.token.transfer(ctx.setup.presale.address, '10000000000000000000000');
-  await ctx.setup.presale.whitelist(whitelisted);
+  // await ctx.setup.presale.whitelist(whitelisted);
 };
 
 const gasCost = async (tx) => {
