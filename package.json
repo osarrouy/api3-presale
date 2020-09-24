@@ -2,7 +2,8 @@
   "name": "root",
   "private": true,
   "scripts": {
-    "install": "npx lerna bootstrap"
+    "install": "npx lerna bootstrap",
+    "test:contracts": "cd packages/contracts && npm run test"
   },
   "devDependencies": {
     "lerna": "^3.22.1"

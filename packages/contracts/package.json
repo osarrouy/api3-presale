@@ -3,10 +3,10 @@
   "version": "1.0.0",
   "author": "Olivier Sarrouy <osarrouy@protonmail.com>",
   "license": "GPLv3",
-  "homepage": "https://github.com/Curve-Labs/necDAO-uniswap",
+  "homepage": "https://github.com/osarrouy/api3-presale",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Curve-Labs/necDAO-uniswap.git"
+    "url": "git+https://github.com/osarrouy/api3-presale.git"
   },
   "scripts": {
     "lint": "npx buidler check",
