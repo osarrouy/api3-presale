@@ -92,7 +92,7 @@ contract API3Presale {
       * @dev          Update admin address.
       * @param _admin The ethereum address of the new admin.
       */
-    function updateAdmin(address _admin)       external protected {
+    function updateAdmin(address _admin) external protected {
         require(_admin != address(0), ERROR_ADDRESS);
         require(_admin != admin,      ERROR_ADDRESS);
 
@@ -116,7 +116,7 @@ contract API3Presale {
       * @dev              Whitelist investors.
       * @param _investors An array of investors ethereum addresses to be whitelisted.
       */
-    function whitelist(address[] calldata _investors)   external protected isPending {
+    function whitelist(address[] calldata _investors) external protected isPending {
         require(_investors.length <= 20, ERROR_ARRAY);
 
         for (uint256 i = 0 ; i < _investors.length ; i++) {
@@ -147,7 +147,7 @@ contract API3Presale {
       * @dev          Update pricing operations based on ETH price.
       * @param _price The ETH price [in $ per ETH, e.g. $340 per ETH] [no decimals allowed]
       */
-    function updateETHPrice(uint256 _price)             external protected isPending {
+    function updateETHPrice(uint256 _price) external protected isPending {
         require(_price != uint256(0), ERROR_PRICE);
 
         _setPrice(_price);
@@ -156,10 +156,10 @@ contract API3Presale {
     /**
       * @dev Open the presale. Open buys and close whitelisting and pricing operations.
       */
-    function open()                                     external protected isPending {
-      isOpen = true;
+    function open() external protected isPending {
+        isOpen = true;
 
-      emit Open();
+        emit Open();
     }
     
     /* 1.3 protected operations that can only be performed while the presale is running */
@@ -167,13 +167,13 @@ contract API3Presale {
     /**
       * @dev Close the presale. Close buys and open whithdrawal operations. Withdraw received ETH and remaining API3 tokens.
       */
-    function close()       external protected isRunning {
-      isClosed = true;
+    function close() external protected isRunning {
+        isClosed = true;
 
-      withdraw();
-      withdrawETH();
+        withdraw();
+        withdrawETH();
 
-      emit Close();
+        emit Close();
     }
 
     /* 1.4 protected operations that can only be performed after the presale closes */
@@ -181,7 +181,7 @@ contract API3Presale {
     /**
       * @dev Transfer any remaining API3 tokens hold by this contract to the bank.
       */
-    function withdraw()    public protected isOver {
+    function withdraw() public protected isOver {
         require(token.transfer(bank, token.balanceOf(address(this))), ERROR_ERC20_TRANSFER);
     }
 

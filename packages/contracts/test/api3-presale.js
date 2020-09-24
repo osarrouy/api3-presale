@@ -647,7 +647,7 @@ contract('API3Presale', ([admin, bank, user1, user2, blacklisted]) => {
     });
   });
 
-  context.only('# receive', () => {
+  context('# receive', () => {
     context('» presale is open', () => {
       context('» presale is not over', () => {
         context('» user is whitelisted', () => {
