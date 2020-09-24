@@ -209,6 +209,7 @@ contract API3Presale {
         require(raised               <= GLOBAL_CAP,     ERROR_GLOBAL_CAP);
         require(invested[msg.sender] <= INDIVIDUAL_CAP, ERROR_INDIVIDUAL_CAP);
         // transfer token
+        // PLEASE MAKE SURE API3 ERC20 returns true on success.
         require(token.transfer(msg.sender, amount), ERROR_ERC20_TRANSFER);
         // send remaining ETH back if needed
         if (remains > 0) {
