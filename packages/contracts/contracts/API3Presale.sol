@@ -195,9 +195,9 @@ contract API3Presale {
     /* payment fallback function */
 
     receive() external payable isRunning {
-        require(isWhitelisted[msg.sender],              ERROR_NOT_WHITELISTED);
-        require(raised               <= GLOBAL_CAP,     ERROR_GLOBAL_CAP);
-        require(invested[msg.sender] <= INDIVIDUAL_CAP, ERROR_INDIVIDUAL_CAP);
+        require(isWhitelisted[msg.sender],             ERROR_NOT_WHITELISTED);
+        require(raised               <  GLOBAL_CAP,    ERROR_GLOBAL_CAP);
+        require(invested[msg.sender] < INDIVIDUAL_CAP, ERROR_INDIVIDUAL_CAP);
 
         uint256 investment = invested[msg.sender].add(msg.value) <= INDIVIDUAL_CAP ? msg.value : INDIVIDUAL_CAP.sub(invested[msg.sender]);
         uint256 remains    = msg.value.sub(investment);

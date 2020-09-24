@@ -2,6 +2,7 @@ const { expect } = require('chai');
 const { BN, balance, constants, ether, expectEvent, expectRevert, send } = require('@openzeppelin/test-helpers');
 const API3Presale = artifacts.require('API3Presale');
 const helpers = require('./helpers');
+const { ETH_PRICE } = require('./helpers');
 
 contract('API3Presale', ([admin, bank, user1, user2, blacklisted]) => {
   const setup = async () => {
@@ -423,7 +424,7 @@ contract('API3Presale', ([admin, bank, user1, user2, blacklisted]) => {
           });
 
           before('!! setup balances', async () => {
-            await web3.eth.sendTransaction({ from: user1, to: this.setup.presale.address, value: helpers.VALUE_LOW });
+            await send.ether(user1, this.setup.presale.address, helpers.VALUE_LOW);
             this.data.balances[0] = await balance.current(bank);
             this.data.balances[1] = await balance.current(this.setup.presale.address);
             this.data.balances[2] = await this.setup.token.balanceOf(bank);
@@ -514,7 +515,7 @@ contract('API3Presale', ([admin, bank, user1, user2, blacklisted]) => {
         });
 
         before('!! buy tokens', async () => {
-          await web3.eth.sendTransaction({ from: user1, to: this.setup.presale.address, value: helpers.VALUE_LOW });
+          await send.ether(user1, this.setup.presale.address, helpers.VALUE_LOW);
         });
 
         before('!! close presale', async () => {
@@ -598,7 +599,6 @@ contract('API3Presale', ([admin, bank, user1, user2, blacklisted]) => {
 
         before('!! setup balances', async () => {
           // cannot send ETH because the receive function reverts if presale is over
-          // await web3.eth.sendTransaction({ from: user1, to: this.setup.presale.address, value: helpers.VALUE_LOW });
           this.data.balances[0] = await balance.current(bank);
           this.data.balances[1] = await balance.current(this.setup.presale.address);
         });
@@ -650,73 +650,153 @@ contract('API3Presale', ([admin, bank, user1, user2, blacklisted]) => {
   context.only('# receive', () => {
     context('» presale is open', () => {
       context('» presale is not over', () => {
-        context('» global cap is not reached', () => {
-          context('» individual cap is not reached', () => {
-            before('!! deploy setup', async () => {
-              await setup();
-            });
+        context('» user is whitelisted', () => {
+          context('» global cap is not reached', () => {
+            context('» individual cap is not reached', () => {
+              context('» individual investment is less than individual cap', () => {
+                before('!! deploy setup', async () => {
+                  await setup();
+                });
 
-            before('!! whitelist investor', async () => {
-              await this.setup.presale.whitelist([user1]);
-            });
+                before('!! whitelist investor', async () => {
+                  await this.setup.presale.whitelist([user1]);
+                });
 
-            before('!! open presale', async () => {
-              await this.setup.presale.open();
-            });
+                before('!! open presale', async () => {
+                  await this.setup.presale.open();
+                });
 
-            before('!! setup balances', async () => {
-              this.data.balances[0] = await balance.current(user1);
-              this.data.balances[1] = await balance.current(this.setup.presale.address);
-              this.data.balances[2] = await this.setup.token.balanceOf(user1);
-              this.data.balances[3] = await this.setup.token.balanceOf(this.setup.presale.address);
-            });
+                before('!! setup balances', async () => {
+                  this.data.balances[0] = await balance.current(user1);
+                  this.data.balances[1] = await balance.current(this.setup.presale.address);
+                  this.data.balances[2] = await this.setup.token.balanceOf(user1);
+                  this.data.balances[3] = await this.setup.token.balanceOf(this.setup.presale.address);
+                });
 
-            before('!! buy tokens', async () => {
-              this.data.tx = await web3.eth.sendTransaction({ from: user1, to: this.setup.presale.address, value: helpers.VALUE_LOW });
-            });
+                before('!! buy tokens', async () => {
+                  this.data.tx = await send.ether(user1, this.setup.presale.address, helpers.VALUE_LOW);
+                });
 
-            it('it emits an Invest event', async () => {
-              await expectEvent.inTransaction(this.data.tx.transactionHash, this.setup.presale, 'Invest', {
-                investor: user1,
-                value: helpers.VALUE_LOW,
-                investment: helpers.VALUE_LOW,
-                amount: helpers.RETURN_LOW,
+                it('it emits an Invest event', async () => {
+                  await expectEvent.inTransaction(this.data.tx.transactionHash, this.setup.presale, 'Invest', {
+                    investor: user1,
+                    value: helpers.VALUE_LOW,
+                    investment: helpers.VALUE_LOW,
+                    amount: helpers.RETURN_LOW,
+                  });
+                });
+
+                it('it collects ETH and transfers tokens', async () => {
+                  expect(await balance.current(user1)).to.be.bignumber.equal(
+                    this.data.balances[0].sub(helpers.VALUE_LOW).sub(await helpers.gasCost(this.data.tx))
+                  );
+                  expect(await balance.current(this.setup.presale.address)).to.be.bignumber.equal(this.data.balances[1].add(helpers.VALUE_LOW));
+                  expect(await this.setup.token.balanceOf(user1)).to.be.bignumber.equal(this.data.balances[2].add(helpers.RETURN_LOW));
+                  expect(await this.setup.token.balanceOf(this.setup.presale.address)).to.be.bignumber.equal(this.data.balances[3].sub(helpers.RETURN_LOW));
+                });
+
+                it('it updates state', async () => {
+                  expect(await this.setup.presale.raised()).to.be.bignumber.equal(helpers.VALUE_LOW);
+                  expect(await this.setup.presale.invested(user1)).to.be.bignumber.equal(helpers.VALUE_LOW);
+                });
+              });
+
+              context('» individual investment is more than individual cap', () => {
+                before('!! deploy setup', async () => {
+                  await setup();
+                });
+
+                before('!! whitelist investor', async () => {
+                  await this.setup.presale.whitelist([user1]);
+                });
+
+                before('!! open presale', async () => {
+                  await this.setup.presale.open();
+                });
+
+                before('!! make a first buy', async () => {
+                  await send.ether(user1, this.setup.presale.address, helpers.VALUE_HIGH);
+                  expect(await this.setup.presale.raised()).to.be.bignumber.equal(helpers.VALUE_HIGH);
+                  expect(await this.setup.presale.invested(user1)).to.be.bignumber.equal(helpers.VALUE_HIGH);
+                });
+
+                before('!! setup balances', async () => {
+                  this.data.balances[0] = await balance.current(user1);
+                  this.data.balances[1] = await balance.current(this.setup.presale.address);
+                  this.data.balances[2] = await this.setup.token.balanceOf(user1);
+                  this.data.balances[3] = await this.setup.token.balanceOf(this.setup.presale.address);
+                });
+
+                before('!! buy tokens', async () => {
+                  this.data.tx = await send.ether(user1, this.setup.presale.address, helpers.VALUE_HIGH);
+                });
+
+                it('it emits an Invest event', async () => {
+                  await expectEvent.inTransaction(this.data.tx.transactionHash, this.setup.presale, 'Invest', {
+                    investor: user1,
+                    value: helpers.VALUE_HIGH,
+                    investment: helpers.INVESTMENT_HIGH,
+                    amount: helpers.RETURN_HIGH,
+                  });
+                });
+
+                it('it collects ETH, transfer remaining ETH back and transfers tokens', async () => {
+                  expect(await balance.current(user1)).to.be.bignumber.equal(
+                    this.data.balances[0].sub(helpers.INVESTMENT_HIGH).sub(await helpers.gasCost(this.data.tx))
+                  );
+                  expect(await balance.current(this.setup.presale.address)).to.be.bignumber.equal(this.data.balances[1].add(helpers.INVESTMENT_HIGH));
+                  expect(await this.setup.token.balanceOf(user1)).to.be.bignumber.equal(this.data.balances[2].add(helpers.RETURN_HIGH));
+                  expect(await this.setup.token.balanceOf(this.setup.presale.address)).to.be.bignumber.equal(this.data.balances[3].sub(helpers.RETURN_HIGH));
+                });
+
+                it('it updates state', async () => {
+                  expect(await this.setup.presale.raised()).to.be.bignumber.equal(helpers.INDIVIDUAL_CAP_WEI);
+                  expect(await this.setup.presale.invested(user1)).to.be.bignumber.equal(helpers.INDIVIDUAL_CAP_WEI);
+                });
               });
             });
 
-            it('it collects ETH and transfers tokens', async () => {
-              expect(await balance.current(user1)).to.be.bignumber.equal(this.data.balances[0].sub(helpers.VALUE_LOW).sub(await helpers.gasCost(this.data.tx)));
-              expect(await balance.current(this.setup.presale.address)).to.be.bignumber.equal(this.data.balances[1].add(helpers.VALUE_LOW));
-              expect(await this.setup.token.balanceOf(user1)).to.be.bignumber.equal(this.data.balances[2].add(helpers.RETURN_LOW));
-              expect(await this.setup.token.balanceOf(this.setup.presale.address)).to.be.bignumber.equal(this.data.balances[3].sub(helpers.RETURN_LOW));
+            context('» individual cap is reached', () => {
+              before('!! deploy setup', async () => {
+                await setup();
+              });
+
+              before('!! whitelist investor', async () => {
+                await this.setup.presale.whitelist([user1]);
+              });
+
+              before('!! open presale', async () => {
+                await this.setup.presale.open();
+              });
+
+              before('!! reach individual cap', async () => {
+                await send.ether(user1, this.setup.presale.address, ether(new BN('100000')).div(helpers.ETH_PRICE));
+                expect(await this.setup.presale.invested(user1)).to.be.bignumber.equal(helpers.INDIVIDUAL_CAP_WEI);
+              });
+
+              it('it reverts', async () => {
+                await expectRevert(send.ether(user1, this.setup.presale.address, helpers.VALUE_LOW), 'API3 > Individual cap reached');
+              });
             });
           });
 
-          context('» individual cap is reached', () => {
-            before('!! deploy setup', async () => {
-              await setup();
-            });
-
-            before('!! whitelist investor', async () => {
-              await this.setup.presale.whitelist([user1]);
-            });
-
-            before('!! open presale', async () => {
-              await this.setup.presale.open();
-            });
-
-            before('!! reach individual cap', async () => {
-              await send.ether(user1, this.setup.presale.address, new BN('100000').div(helpers.ETH_PRICE));
-            });
-
-            it('it reverts', async () => {
-              await expectRevert(send.ether(user1, this.setup.presale.address, helpers.VALUE_LOW), 'API3 > Individual cap reached');
-            });
+          context('» global cap is reached', () => {
+            // cannot test because it would require 20 different addresses to reach the global cap
           });
         });
 
-        context('» global cap is reached', () => {
-          // cannot test because it would require 20 different addresses to reach the global cap
+        context('» user is not whitelisted', () => {
+          before('!! deploy setup', async () => {
+            await setup();
+          });
+
+          before('!! open presale', async () => {
+            await this.setup.presale.open();
+          });
+
+          it('it reverts', async () => {
+            await expectRevert(send.ether(user1, this.setup.presale.address, helpers.VALUE_LOW), 'API3 > Address not whitelisted');
+          });
         });
       });
 
