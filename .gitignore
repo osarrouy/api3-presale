@@ -13,11 +13,8 @@ artifacts
 cache
 
 # coverage
-*/**/coverage
-*/**/coverageEnv
-*/**/coverage.json
-*/**/allFiredEvents
-*/**/scTopics
+coverage
+coverage.json
 
 # macOS shit
 .DS_Store
