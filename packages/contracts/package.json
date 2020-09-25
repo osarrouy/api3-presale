@@ -15,7 +15,10 @@
     "test": "npx buidler test",
     "test:coverage": "npx buidler coverage --network coverage",
     "test:gas": "REPORT_GAS=TRUE npx buidler test",
-    "deploy:rinkeby": "npx buidler deploy --network rinkeby"
+    "deploy:token:rinkeby": "npx buidler deploy --tags token --network rinkeby",
+    "deploy:presale:rinkeby": "npx buidler deploy --tags presale --network rinkeby",
+    "deploy:whitelist:rinkeby": "npx buidler deploy --tags whitelist --network rinkeby",
+    "deploy:open:rinkeby": "npx buidler deploy --tags open --network rinkeby"
   },
   "dependencies": {
     "openzeppelin-solidity": "3.2.0"
