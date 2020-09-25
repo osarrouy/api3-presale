@@ -1,9 +1,11 @@
 <script>
+  import Spinner from "./Spinner.svelte";
   import { createEventDispatcher } from "svelte";
 
   const dispatch = createEventDispatcher();
 
   export let value = "";
+  export let loading = false;
 
   const _click = () => {
     dispatch("click");
@@ -33,4 +35,10 @@
   }
 </style>
 
-<input type="button" {value} on:click={_click} />
+{#if loading}
+  <Spinner />
+{:else}
+  <div on:click={_click}>
+    <input type="button" {value} />
+  </div>
+{/if}

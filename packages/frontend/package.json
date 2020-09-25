@@ -2,6 +2,12 @@
   "name": "@api3-presale/frontend",
   "version": "1.0.0",
   "author": "Olivier Sarrouy <osarrouy@protonmail.com>",
+  "license": "GPLv3",
+  "homepage": "https://github.com/osarrouy/api3-presale",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/osarrouy/api3-presale.git"
+  },
   "scripts": {
     "dev": "npx sapper dev",
     "build": "npx sapper build --legacy",
@@ -9,6 +15,7 @@
     "start": "node __sapper__/build"
   },
   "dependencies": {
+    "bignumber.js": "^9.0.0",
     "compression": "^1.7.1",
     "polka": "next",
     "sirv": "^0.4.0"

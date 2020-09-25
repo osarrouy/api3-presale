@@ -1,18 +1,31 @@
 <script>
+  import BN from "bignumber.js";
   import Button from "../components/Button.svelte";
   import { NotificationDisplay, notifier } from "../components/Notification";
   import {
     CHAIN_ID,
     CHAIN_NAME,
     CONTRACT_ADDRESS,
+    ERRORS,
     GAS_COST,
     GAS_PRICE
   } from "../lib/";
+
+  const ether = value => {
+    const base = new BN("10").pow(new BN("18"));
+    value = new BN(value)
+      .times(base)
+      .integerValue()
+      .toString(16);
+
+    return value;
+  };
 
   let chain,
     account,
     error,
     value = 0,
+    loading = false,
     metamask = "pending",
     connected = false;
 
@@ -25,7 +38,6 @@
   }
 
   $: {
-    console.log(account);
     if (account && account != 0xb71d2d88030a00830c3d45f84c12cc8aaf6857a5) {
       notifier.danger(
         "Your Ethereum address is not whitelisted. Please select another address."
@@ -45,7 +57,8 @@
   }
 
   const connect = async () => {
-    if (typeof window.ethereum !== "undefined" && ethereum.isMetaMask) {
+    loading = true;
+    if (typeof ethereum !== "undefined" && ethereum.isMetaMask) {
       account = (await ethereum.request({ method: "eth_requestAccounts" }))[0];
       chain = ethereum.chainId;
       ethereum.on("accountsChanged", accounts => {
@@ -57,32 +70,40 @@
       metamask = true;
     } else {
       metamask = false;
-      notifier.danger(
-        "Your browser does not seem to come with Metamask installed"
-      );
+      notifier.danger(ERRORS.NO_METAMASK);
     }
+    loading = false;
   };
 
   const buy = async () => {
     if (value <= 0) {
-      error = "Please provide a positive contribution.";
+      error = "Please provide a positive ETH amount.";
     } else {
       error = null;
-      ethereum
-        .request({
+      loading = true;
+      try {
+        const tx = await ethereum.request({
           method: "eth_sendTransaction",
           params: [
             {
               from: account,
               to: CONTRACT_ADDRESS,
-              value: "0x29a2241af62c0000",
+              value: ether(value),
               gasPrice: GAS_PRICE.toString(16),
               gas: GAS_COST.toString(16)
             }
           ]
-        })
-        .then(txHash => console.log(txHash))
-        .catch(error => console.error);
+        });
+        value = 0;
+        notifier.info(
+          "Transaction being minted through tx " +
+            tx +
+            ". Please check MetaMask activity."
+        );
+      } catch (e) {
+        notifier.danger(e.message);
+      }
+      loading = false;
     }
   };
 
@@ -97,13 +118,6 @@
 </script>
 
 <style lang="scss">
-  img.logo {
-    position: fixed;
-    left: 2 * $GU;
-    top: 2 * $GU;
-    width: 5 * $GU;
-  }
-
   section {
     margin: 2 * $GU 0;
     p {
@@ -111,6 +125,8 @@
     }
     &.error {
       color: $error;
+      font-size: 0.9em;
+      min-height: 2.5rem;
     }
     &.form {
       display: flex;
@@ -119,12 +135,13 @@
       input[type="number"] {
         display: block;
         background: transparentize($primary, 0.8);
-        box-shadow: 0px 0px 10px lighten($primary, 0.8);
+        // box-shadow: 0px 0px 10px lighten($primary, 0.8);
         border: none;
+        border-bottom: 1px solid $primary;
         outline: none;
         cursor: pointer;
         color: white;
-        padding: 2 * $GU 4 * $GU;
+        padding: 2 * $GU;
       }
       span {
         position: relative;
@@ -134,7 +151,6 @@
   }
 </style>
 
-<img class="logo" src="logo.png" alt="API3" />
 <NotificationDisplay />
 
 {#if metamask === 'pending' || metamask == true}
@@ -148,7 +164,9 @@
   </section>
 {/if}
 {#if metamask === 'pending'}
-  <Button value="CONNECT" on:click={connect} />
+  <section>
+    <Button {loading} value="CONNECT" on:click={connect} />
+  </section>
 {/if}
 {#if metamask == true && !connected}
   <section class="error">
@@ -174,11 +192,11 @@
 {/if}
 {#if connected}
   <section class="form">
-    <input type="number" min="0" bind:value />
+    <input type="number" min="0" disabled={loading} bind:value />
     <span>ETH</span>
-    <Button value="BUY" on:click={buy} />
+    <Button {loading} value="BUY" on:click={buy} />
   </section>
-  {#if error}
-    <section class="error">{error}</section>
-  {/if}
 {/if}
+<section class="error">
+  {#if error}{error}{/if}
+</section>
