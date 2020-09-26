@@ -3,14 +3,14 @@
   import { onMount, onDestroy } from "svelte";
 
   export let themes = {
-    danger: "#bb2124",
-    success: "#22bb33",
+    danger: "#ff8080",
+    success: "#7be3cb",
     warning: "#f0ad4e",
-    info: "#5bc0de",
+    info: "#7a63b2",
     default: "#aaaaaa"
   };
 
-  export let timeout = 3000;
+  export let timeout = 10000;
 
   let count = 0;
   let toasts = [];
@@ -65,8 +65,9 @@
   }
 </script>
 
-<style>
+<style lang="scss">
   :global(.toasts) {
+    border-radius: 3px;
     list-style: none;
     position: fixed;
     top: 0;
@@ -77,9 +78,10 @@
   }
 
   :global(.toasts) > .toast {
+    border-radius: 3px;
     position: relative;
-    margin: 1vh 1vw;
-    min-width: 40vw;
+    margin: $GU;
+    min-width: 20vw;
     position: relative;
     animation: animate-in 600ms forwards;
     color: #fff;

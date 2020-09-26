@@ -3,7 +3,7 @@ lerna-debug.log
 
 # dependencies
 node_modules
-package-lock.json
+# package-lock.json
 
 # sapper
 __sapper__

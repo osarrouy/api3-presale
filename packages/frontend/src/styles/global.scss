@@ -24,14 +24,6 @@ h6 {
 
 p {
   margin: $GU 0;
-
-  &:first-of-type {
-    margin-top: 0;
-  }
-
-  &:last-of-type {
-    margin-bottom: 0;
-  }
 }
 
 a {
@@ -40,7 +32,6 @@ a {
   padding: $GU / 2;
 
   &:hover {
-    font-weight: bold;
     background-color: $primary;
     color: $background;
   }

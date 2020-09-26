@@ -3,7 +3,8 @@
   "private": true,
   "scripts": {
     "install": "npx lerna bootstrap",
-    "test:contracts": "cd packages/contracts && npm run test"
+    "test:contracts": "cd packages/contracts && npm run test",
+    "build:frontend": "cd packages/fronted && npm run export"
   },
   "devDependencies": {
     "lerna": "^3.22.1"
