@@ -265,7 +265,7 @@
     </p>
   </section>
   <section>
-    <h2>Dashboard</h2>
+    <h2>Account</h2>
     <div class="dashboard">
       <p>
         <a href="https://etherscan.io/address/{account}" target="_blank">
