@@ -4,7 +4,7 @@
   "scripts": {
     "install": "npx lerna bootstrap",
     "test:contracts": "cd packages/contracts && npm run test",
-    "build:frontend": "cd packages/fronted && npm run export"
+    "build:frontend": "cd packages/frontend && npm run export"
   },
   "devDependencies": {
     "lerna": "^3.22.1"
