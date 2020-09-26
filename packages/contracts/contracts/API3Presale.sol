@@ -100,23 +100,10 @@ contract API3Presale {
     }
 
     /**
-      * @dev         Update bank address.
-      * @param _bank The ethereum address of the new bank.
-      */
-    function updateBank(address payable _bank) external protected {
-        require(_bank != address(0), ERROR_ADDRESS);
-        require(_bank != bank,       ERROR_ADDRESS);
-
-        bank = _bank;
-    }
-
-    /* 1.2 protected operations that can only be performed before presale opens */
-
-    /**
       * @dev              Whitelist investors.
       * @param _investors An array of investors ethereum addresses to be whitelisted.
       */
-    function whitelist(address[] calldata _investors) external protected isPending {
+    function whitelist(address[] calldata _investors) external protected {
         require(_investors.length <= 20, ERROR_ARRAY);
 
         for (uint256 i = 0 ; i < _investors.length ; i++) {
@@ -132,7 +119,7 @@ contract API3Presale {
       * @dev              Un-whitelist investors.
       * @param _investors An array of investors ethereum addresses to be un-whitelisted.
       */
-    function unwhitelist(address[] calldata _investors) external protected isPending {
+    function unwhitelist(address[] calldata _investors) external protected {
         require(_investors.length <= 20, ERROR_ARRAY);
 
         for (uint256 i = 0 ; i < _investors.length ; i++) {
@@ -141,6 +128,19 @@ contract API3Presale {
             isWhitelisted[_investors[i]] = false;
             emit Unwhitelist(_investors[i]);
         }
+    }
+
+    /* 1.2 protected operations that can only be performed before presale opens */
+
+    /**
+      * @dev         Update bank address.
+      * @param _bank The ethereum address of the new bank.
+      */
+    function updateBank(address payable _bank) external protected isPending {
+        require(_bank != address(0), ERROR_ADDRESS);
+        require(_bank != bank,       ERROR_ADDRESS);
+
+        bank = _bank;
     }
 
     /**

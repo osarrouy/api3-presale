@@ -101,38 +101,54 @@ contract('API3Presale', ([admin, bank, user1, user2, blacklisted]) => {
 
   context('# updateBank', () => {
     context('» transaction is triggered by admin', () => {
-      context('» new bank address is valid', () => {
-        before('!! deploy setup', async () => {
-          await setup();
+      context('» presale is not opened yet', () => {
+        context('» new bank address is valid', () => {
+          before('!! deploy setup', async () => {
+            await setup();
+          });
+
+          before('!! update bank', async () => {
+            this.data.tx = await this.setup.presale.updateBank(user1);
+          });
+
+          it('it updates the bank', async () => {
+            expect(await this.setup.presale.bank()).to.equal(user1);
+          });
         });
 
-        before('!! update bank', async () => {
-          this.data.tx = await this.setup.presale.updateBank(user1);
+        context('» new bank address is not valid [null address]', () => {
+          before('!! deploy setup', async () => {
+            await setup();
+          });
+
+          it('it reverts', async () => {
+            await expectRevert(this.setup.presale.updateBank(constants.ZERO_ADDRESS), 'API3 > Invalid address');
+          });
         });
 
-        it('it updates the bank', async () => {
-          expect(await this.setup.presale.bank()).to.equal(user1);
+        context('» new bank address is not valid [existing address]', () => {
+          before('!! deploy setup', async () => {
+            await setup();
+          });
+
+          it('it reverts', async () => {
+            await expectRevert(this.setup.presale.updateBank(bank), 'API3 > Invalid address');
+          });
         });
       });
+    });
 
-      context('» new bank address is not valid [null address]', () => {
-        before('!! deploy setup', async () => {
-          await setup();
-        });
-
-        it('it reverts', async () => {
-          await expectRevert(this.setup.presale.updateBank(constants.ZERO_ADDRESS), 'API3 > Invalid address');
-        });
+    context('» presale is opened', () => {
+      before('!! deploy setup', async () => {
+        await setup();
       });
 
-      context('» new bank address is not valid [existing address]', () => {
-        before('!! deploy setup', async () => {
-          await setup();
-        });
+      before('!! open presale', async () => {
+        await this.setup.presale.open();
+      });
 
-        it('it reverts', async () => {
-          await expectRevert(this.setup.presale.updateBank(bank), 'API3 > Invalid address');
-        });
+      it('it reverts', async () => {
+        await expectRevert(this.setup.presale.updateBank(user1), 'API3 > Presale open');
       });
     });
 
@@ -149,65 +165,49 @@ contract('API3Presale', ([admin, bank, user1, user2, blacklisted]) => {
 
   context('# whitelist', () => {
     context('» transaction is triggered by admin', () => {
-      context('» presale is not opened yet', () => {
-        context('» investors addresses are valid', () => {
-          context('» investors addresses are not already whitelisted', () => {
-            before('!! deploy setup', async () => {
-              await setup();
-            });
-
-            before('!! whitelist investors', async () => {
-              this.data.tx = await this.setup.presale.whitelist([user1, user2]);
-            });
-
-            it('it emits Whitelist events', async () => {
-              await expectEvent(this.data.tx, 'Whitelist', { investor: user1 });
-              await expectEvent(this.data.tx, 'Whitelist', { investor: user2 });
-            });
-
-            it('it whitelists investors', async () => {
-              expect(await this.setup.presale.isWhitelisted(user1)).to.equal(true);
-              expect(await this.setup.presale.isWhitelisted(user2)).to.equal(true);
-            });
-          });
-
-          context('» investors addresses are already whitelisted', () => {
-            before('!! deploy setup', async () => {
-              await setup();
-            });
-
-            before('!! whitelist investors', async () => {
-              await this.setup.presale.whitelist([user2]);
-            });
-
-            it('it reverts', async () => {
-              await expectRevert(this.setup.presale.whitelist([user1, user2]), 'API3 > Address already whitelisted');
-            });
-          });
-        });
-
-        context('» investors addresses are not valid', () => {
+      context('» investors addresses are valid', () => {
+        context('» investors addresses are not already whitelisted', () => {
           before('!! deploy setup', async () => {
             await setup();
           });
 
+          before('!! whitelist investors', async () => {
+            this.data.tx = await this.setup.presale.whitelist([user1, user2]);
+          });
+
+          it('it emits Whitelist events', async () => {
+            await expectEvent(this.data.tx, 'Whitelist', { investor: user1 });
+            await expectEvent(this.data.tx, 'Whitelist', { investor: user2 });
+          });
+
+          it('it whitelists investors', async () => {
+            expect(await this.setup.presale.isWhitelisted(user1)).to.equal(true);
+            expect(await this.setup.presale.isWhitelisted(user2)).to.equal(true);
+          });
+        });
+
+        context('» investors addresses are already whitelisted', () => {
+          before('!! deploy setup', async () => {
+            await setup();
+          });
+
+          before('!! whitelist investors', async () => {
+            await this.setup.presale.whitelist([user2]);
+          });
+
           it('it reverts', async () => {
-            await expectRevert(this.setup.presale.whitelist([constants.ZERO_ADDRESS, user2]), 'API3 > Invalid address');
+            await expectRevert(this.setup.presale.whitelist([user1, user2]), 'API3 > Address already whitelisted');
           });
         });
       });
 
-      context('» presale is opened', () => {
+      context('» investors addresses are not valid', () => {
         before('!! deploy setup', async () => {
           await setup();
         });
 
-        before('!! open presale', async () => {
-          await this.setup.presale.open();
-        });
-
         it('it reverts', async () => {
-          await expectRevert(this.setup.presale.whitelist([user1, user2]), 'API3 > Presale opened');
+          await expectRevert(this.setup.presale.whitelist([constants.ZERO_ADDRESS, user2]), 'API3 > Invalid address');
         });
       });
     });
@@ -225,47 +225,7 @@ contract('API3Presale', ([admin, bank, user1, user2, blacklisted]) => {
 
   context('# unwhitelist', () => {
     context('» transaction is triggered by admin', () => {
-      context('» presale is not opened yet', () => {
-        context('» investors addresses are whitelisted', () => {
-          before('!! deploy setup', async () => {
-            await setup();
-          });
-
-          before('!! whitelist investors', async () => {
-            await this.setup.presale.whitelist([user1, user2]);
-          });
-
-          before('!! unwhitelist investors', async () => {
-            this.data.tx = await this.setup.presale.unwhitelist([user1, user2]);
-          });
-
-          it('it emits Unwhitelist events', async () => {
-            await expectEvent(this.data.tx, 'Unwhitelist', { investor: user1 });
-            await expectEvent(this.data.tx, 'Unwhitelist', { investor: user2 });
-          });
-
-          it('it unwhitelists investors', async () => {
-            expect(await this.setup.presale.isWhitelisted(user1)).to.equal(false);
-            expect(await this.setup.presale.isWhitelisted(user2)).to.equal(false);
-          });
-        });
-
-        context('» investors addresses are not whitelisted', () => {
-          before('!! deploy setup', async () => {
-            await setup();
-          });
-
-          before('!! whitelist investors', async () => {
-            await this.setup.presale.whitelist([user2]);
-          });
-
-          it('it reverts', async () => {
-            await expectRevert(this.setup.presale.unwhitelist([user1, user2]), 'API3 > Address not whitelisted');
-          });
-        });
-      });
-
-      context('» presale is opened', () => {
+      context('» investors addresses are whitelisted', () => {
         before('!! deploy setup', async () => {
           await setup();
         });
@@ -274,12 +234,32 @@ contract('API3Presale', ([admin, bank, user1, user2, blacklisted]) => {
           await this.setup.presale.whitelist([user1, user2]);
         });
 
-        before('!! open presale', async () => {
-          await this.setup.presale.open();
+        before('!! unwhitelist investors', async () => {
+          this.data.tx = await this.setup.presale.unwhitelist([user1, user2]);
+        });
+
+        it('it emits Unwhitelist events', async () => {
+          await expectEvent(this.data.tx, 'Unwhitelist', { investor: user1 });
+          await expectEvent(this.data.tx, 'Unwhitelist', { investor: user2 });
+        });
+
+        it('it unwhitelists investors', async () => {
+          expect(await this.setup.presale.isWhitelisted(user1)).to.equal(false);
+          expect(await this.setup.presale.isWhitelisted(user2)).to.equal(false);
+        });
+      });
+
+      context('» investors addresses are not whitelisted', () => {
+        before('!! deploy setup', async () => {
+          await setup();
+        });
+
+        before('!! whitelist investors', async () => {
+          await this.setup.presale.whitelist([user2]);
         });
 
         it('it reverts', async () => {
-          await expectRevert(this.setup.presale.unwhitelist([user1, user2]), 'API3 > Presale opened');
+          await expectRevert(this.setup.presale.unwhitelist([user1, user2]), 'API3 > Address not whitelisted');
         });
       });
     });
