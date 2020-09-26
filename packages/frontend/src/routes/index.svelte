@@ -277,7 +277,7 @@
 
   </section>
   <section>
-    <h2>Invest</h2>
+    <h2>Contribute</h2>
     <div class="form">
       <div>
         <input type="number" min="0" disabled={loading} bind:value />

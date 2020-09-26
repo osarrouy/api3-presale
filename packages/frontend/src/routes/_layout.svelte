@@ -39,7 +39,7 @@
 
 <header>
   <img class="logo" src="logo.png" alt="API3" />
-  <h1>API3 Presale</h1>
+  <h1>API3 Governance Distribution</h1>
 </header>
 
 <main>
