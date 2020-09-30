@@ -30,7 +30,6 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    min-height: 100vh;
     margin: auto;
     padding: 2 * $GU;
     max-width: 980px;
